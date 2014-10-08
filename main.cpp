@@ -6,6 +6,7 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <ctime>
 
 
 struct Vec2 {
@@ -57,6 +58,11 @@ class RandomGen {
     double r = std::rand() / (double)RAND_MAX;
     return min + (max - min) * r;
   }
+
+  void split(RandomGen* g1, RandomGen* g2) {
+    *g1 = *this;
+    *g2 = *this;
+  }
 };
 
 
@@ -64,6 +70,8 @@ enum Resource { RES_NONE, RES_ENERGY, RES_POOP };
 
 class ResourceField {
  private:
+  ResourceField(const ResourceField&); // no copying
+
   Vec2 ll, ur;
   int dim_x, dim_y;
 
@@ -114,6 +122,14 @@ class ResourceField {
     }
   }
 
+  void step(double dt, RandomGen& gen) {
+    if (gen.range(0,1) < dt) {
+      int i = std::min((int)gen.range(0, dim_x), dim_x);
+      int j = std::min((int)gen.range(0, dim_y), dim_y);
+      grid[i][j] = RES_ENERGY;
+    }
+  }
+
   Resource take(Vec2 position) {
     int x, y;
     if (to_grid(position, &x, &y)) {
@@ -139,7 +155,25 @@ class ResourceField {
 };
 
 
-class DNA { };
+struct DNA {
+  double speed;
+  double energy_to_eat;
+  double energy_to_split;
+
+  void mutate(RandomGen& g) {
+    speed += g.range(-0.1, 0.1);
+    energy_to_eat += g.range(-1, 1);
+    energy_to_split += g.range(-1, 1);
+  }
+
+  static DNA initial() {
+    DNA dna;
+    dna.speed = 1;
+    dna.energy_to_eat = 10;
+    dna.energy_to_split = 20;
+    return dna;
+  }
+};
 
 
 class Organism {
@@ -150,33 +184,15 @@ class Organism {
   double energy;
 
  public:
-  Organism(DNA dna, Vec2 position, RandomGen gen)
-      : dna(dna), position(position), gen(gen), energy(0)
+  Organism(DNA dna, Vec2 position, RandomGen gen, double energy)
+      : dna(dna), position(position), gen(gen), energy(energy)
   { }
 
   double size() const {
     return 0.1;
   }
 
-  void step(double dt, ResourceField* grid, bool* death) {
-    position += dt * Vec2(gen.range(-1,1), gen.range(-1,1));
-
-    energy -= dt;
-    if (energy < 10) {
-      Resource r = grid->take(position);
-      if (r == RES_ENERGY) {
-        energy += 20;
-        assert(grid->put(position, RES_POOP));
-      }
-      else {
-        assert(grid->put(position, r));
-      }
-    }
-
-    if (energy <= 0) {
-      *death = true;
-    }
-  }
+  void step(double dt, class Simulation* sim, bool* death);
 
   void draw() {
     glPushMatrix();
@@ -198,19 +214,22 @@ class Simulation {
  private:
   ResourceField resources;
   std::list<Organism> organisms;
+  RandomGen gen;
 
  public:
-  Simulation() : resources(Vec2(-16,-12), Vec2(16,12), 32, 24) 
+  Simulation() : resources(Vec2(-16,-12), Vec2(16,12), 64, 48)
   { }
 
+  ResourceField& get_resources() { return resources; }
+
   void add_organism(const Organism& org) {
-    organisms.push_back(org);
+    organisms.push_front(org);
   }
 
   void step(double dt) {
     for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end(); ) {
       bool death = false;
-      i->step(dt, &resources, &death);
+      i->step(dt, this, &death);
       if (death) {
         organisms.erase(i++);
       }
@@ -218,6 +237,8 @@ class Simulation {
         ++i;
       }
     }
+
+    resources.step(dt, gen);
   }
 
   void draw() {
@@ -235,10 +256,66 @@ class Simulation {
         break;
     }
   }
+
+  void clamp(Vec2* v) {
+    if (v->x < -16) { v->x = -16; }
+    if (v->x > 15) { v->x = 15; }
+    if (v->y < -12) { v->y = -12; }
+    if (v->y > 11) { v->y = 11; }
+  }
 };
 
 
+inline void Organism::step(double dt, Simulation* sim, bool* death) {
+  position += dt * dna.speed * Vec2(gen.range(-1,1), gen.range(-1,1));
+  sim->clamp(&position);
+
+  energy -= dt * dna.speed;
+
+  if (energy <= 1) {
+    *death = true;
+    return;
+  }
+
+
+  ResourceField& grid = sim->get_resources();
+
+  if (energy < dna.energy_to_eat) {
+    Resource r = grid.take(position);
+    if (r == RES_ENERGY) {
+      energy += 20;
+      assert(grid.put(position, RES_POOP));
+    }
+    else {
+      assert(grid.put(position, r));
+    }
+  }
+
+  if (energy > dna.energy_to_split) {
+    //divide
+    *death = true;
+
+    RandomGen g1, g2;
+    gen.split(&g1, &g2);
+
+    DNA dna1 = dna;
+    dna1.mutate(g1);
+    Organism o1(dna1, position, g1, energy/2);
+    sim->add_organism(o1);
+
+    DNA dna2 = dna;
+    dna2.mutate(g2);
+    Organism o2(dna2, position, g2, energy/2);
+    sim->add_organism(o2);
+  }
+
+}
+
+
+
 int main() {
+  std::srand(std::time(NULL));
+
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
     std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
     return 1;
@@ -253,7 +330,10 @@ int main() {
   glScaled(1/16.0, 1/12.0, 1);
 
   Simulation sim;
-  sim.add_organism(Organism(DNA(), Vec2(0,0), RandomGen()));
+  {
+    Organism o(DNA::initial(), Vec2(0,0), RandomGen(), 10);
+    sim.add_organism(o);
+  }
 
   double dt = 1/30.0f;
   while(true) {
