@@ -74,6 +74,7 @@ class ResourceField {
 
   Vec2 ll, ur;
   int dim_x, dim_y;
+  double regen;
 
   std::vector< std::vector<Resource> > grid;
 
@@ -85,7 +86,7 @@ class ResourceField {
 
  public:
   ResourceField(Vec2 ll, Vec2 ur, int dim_x, int dim_y)
-      : ll(ll), ur(ur), dim_x(dim_x), dim_y(dim_y),
+      : ll(ll), ur(ur), dim_x(dim_x), dim_y(dim_y), regen(0),
         grid(dim_x, std::vector<Resource>(dim_y))
   {
     for (int i = 0; i < dim_x; i++) {
@@ -123,10 +124,15 @@ class ResourceField {
   }
 
   void step(double dt, RandomGen& gen) {
-    if (gen.range(0,1) < dt) {
+    regen -= dt;
+    while (regen < 0) {
       int i = std::min((int)gen.range(0, dim_x), dim_x);
       int j = std::min((int)gen.range(0, dim_y), dim_y);
       grid[i][j] = RES_ENERGY;
+
+      // poisson
+      // XXX possible infinite loop if gen.range(0,1) can return exactly 1
+      regen += -std::log(1 - gen.range(0,1)) * 5 * dt;
     }
   }
 
