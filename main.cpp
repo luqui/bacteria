@@ -16,16 +16,19 @@ struct Vec2 {
   Vec2& operator *= (double a) {
     x *= a;
     y *= a;
+    return *this;
   }
 
   Vec2& operator += (const Vec2& v) {
     this->x += v.x;
     this->y += v.y;
+    return *this;
   }
 
   Vec2& operator -= (const Vec2& v) {
     this->x -= v.x;
     this->y -= v.y;
+    return *this;
   }
 };
 
@@ -319,7 +322,7 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
 
 
 
-int main() {
+int main(int argc, char** argv) {
   std::srand(std::time(NULL));
 
   if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
