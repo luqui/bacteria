@@ -4,6 +4,8 @@
 #include <list>
 #include <cstdlib>
 #include <vector>
+#include <cassert>
+#include <cmath>
 
 
 struct Vec2 {
@@ -58,7 +60,7 @@ class RandomGen {
 };
 
 
-enum Resource { RES_NONE, RES_FUDGE };
+enum Resource { RES_NONE, RES_ENERGY, RES_POOP };
 
 class ResourceField {
  private:
@@ -68,8 +70,8 @@ class ResourceField {
   std::vector< std::vector<Resource> > grid;
 
   bool to_grid(Vec2 position, int* x, int* y) {
-    *x = int(dim_x * ((position.x - ll.x) / (ur.x - ll.x)));
-    *y = int(dim_x * ((position.x - ll.x) / (ur.x - ll.x)));
+    *x = int(round(dim_x * ((position.x - ll.x) / (ur.x - ll.x))));
+    *y = int(round(dim_y * ((position.y - ll.y) / (ur.y - ll.y))));
     return 0 <= *x && *x < dim_x && 0 <= *y && *y < dim_y;
   }
 
@@ -80,7 +82,7 @@ class ResourceField {
   {
     for (int i = 0; i < dim_x; i++) {
       for (int j = 0; j < dim_y; j++) {
-        grid[i][j] = RES_FUDGE;
+        grid[i][j] = RES_ENERGY;
       }
     }
   }
@@ -88,7 +90,8 @@ class ResourceField {
   static Color resource_color(Resource res) {
     switch (res) {
       case RES_NONE: return Color(0,0,0);
-      case RES_FUDGE: return Color(0.1,0.1,0);
+      case RES_ENERGY: return Color(0.2,0.2,0);
+      case RES_POOP: return Color(0.2,0.1,0);
       default: abort();
     }
   }
@@ -144,18 +147,35 @@ class Organism {
   DNA dna;
   Vec2 position;
   RandomGen gen;
+  double energy;
 
  public:
   Organism(DNA dna, Vec2 position, RandomGen gen)
-      : dna(dna), position(position), gen(gen)
+      : dna(dna), position(position), gen(gen), energy(0)
   { }
 
   double size() const {
     return 0.1;
   }
 
-  void step(double dt, ResourceField* grid) {
+  void step(double dt, ResourceField* grid, bool* death) {
     position += dt * Vec2(gen.range(-1,1), gen.range(-1,1));
+
+    energy -= dt;
+    if (energy < 10) {
+      Resource r = grid->take(position);
+      if (r == RES_ENERGY) {
+        energy += 20;
+        assert(grid->put(position, RES_POOP));
+      }
+      else {
+        assert(grid->put(position, r));
+      }
+    }
+
+    if (energy <= 0) {
+      *death = true;
+    }
   }
 
   void draw() {
@@ -188,8 +208,15 @@ class Simulation {
   }
 
   void step(double dt) {
-    for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end(); ++i) {
-      i->step(dt, &resources);
+    for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end(); ) {
+      bool death = false;
+      i->step(dt, &resources, &death);
+      if (death) {
+        organisms.erase(i++);
+      }
+      else {
+        ++i;
+      }
     }
   }
 
