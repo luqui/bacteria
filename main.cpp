@@ -3,32 +3,50 @@
 #include <iostream>
 #include <list>
 #include <cstdlib>
+#include <vector>
 
 
-class vec2 {
- public:
-  vec2(double x, double y) : x(x), y(y) { }
+struct Vec2 {
+  Vec2(double x, double y) : x(x), y(y) { }
   double x, y;
 
-  vec2& operator *= (double a) {
+  Vec2& operator *= (double a) {
     x *= a;
     y *= a;
   }
 
-  vec2& operator += (const vec2& v) {
+  Vec2& operator += (const Vec2& v) {
     this->x += v.x;
     this->y += v.y;
   }
 
+  Vec2& operator -= (const Vec2& v) {
+    this->x -= v.x;
+    this->y -= v.y;
+  }
 };
 
-static vec2 operator* (double a, vec2 v) {
+static Vec2 operator * (double a, Vec2 v) {
   return v *= a;
 }
 
-static vec2 operator+ (vec2 u, const vec2& v) {
+static Vec2 operator + (Vec2 u, const Vec2& v) {
   return u += v;
 }
+
+static Vec2 operator - (Vec2 u, const Vec2& v) {
+  return u -= v;
+}
+
+
+struct Color {
+  double r, g, b;
+  Color(double r, double g, double b) : r(r), g(g), b(b) { }
+
+  void set() {
+    glColor3d(r,g,b);
+  }
+};
 
 
 class RandomGen {
@@ -40,17 +58,95 @@ class RandomGen {
 };
 
 
+enum Resource { RES_NONE, RES_FUDGE };
+
+class ResourceField {
+ private:
+  Vec2 ll, ur;
+  int dim_x, dim_y;
+
+  std::vector< std::vector<Resource> > grid;
+
+  bool to_grid(Vec2 position, int* x, int* y) {
+    *x = int(dim_x * ((position.x - ll.x) / (ur.x - ll.x)));
+    *y = int(dim_x * ((position.x - ll.x) / (ur.x - ll.x)));
+    return 0 <= *x && *x < dim_x && 0 <= *y && *y < dim_y;
+  }
+
+ public:
+  ResourceField(Vec2 ll, Vec2 ur, int dim_x, int dim_y)
+      : ll(ll), ur(ur), dim_x(dim_x), dim_y(dim_y),
+        grid(dim_x, std::vector<Resource>(dim_y))
+  {
+    for (int i = 0; i < dim_x; i++) {
+      for (int j = 0; j < dim_y; j++) {
+        grid[i][j] = RES_FUDGE;
+      }
+    }
+  }
+
+  static Color resource_color(Resource res) {
+    switch (res) {
+      case RES_NONE: return Color(0,0,0);
+      case RES_FUDGE: return Color(0.1,0.1,0);
+      default: abort();
+    }
+  }
+
+  void draw() {
+    double dx = (ur.x - ll.x) / dim_x;
+    double dy = (ur.y - ll.y) / dim_y;
+
+    for (int i = 0; i < dim_x; i++) {
+      for (int j = 0; j < dim_y; j++) {
+        Vec2 p = ll + Vec2(i * dx, j * dy);
+        resource_color(grid[i][j]).set();
+        glBegin(GL_POLYGON);
+          glVertex2d(p.x - dx/2, p.y - dy/2);
+          glVertex2d(p.x - dx/2, p.y + dy/2);
+          glVertex2d(p.x + dx/2, p.y + dy/2);
+          glVertex2d(p.x + dx/2, p.y - dy/2);
+        glEnd();
+      }
+    }
+  }
+
+  Resource take(Vec2 position) {
+    int x, y;
+    if (to_grid(position, &x, &y)) {
+      Resource r = grid[x][y];
+      grid[x][y] = RES_NONE;
+      return r;
+    }
+    else {
+      return RES_NONE;
+    }
+  }
+
+  bool put(Vec2 position, Resource r) {
+    int x, y;
+    if (to_grid(position, &x, &y) && grid[x][y] == RES_NONE) {
+      grid[x][y] = r;
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+};
+
+
 class DNA { };
 
 
 class Organism {
  private:
   DNA dna;
-  vec2 position;
+  Vec2 position;
   RandomGen gen;
 
  public:
-  Organism(DNA dna, vec2 position, RandomGen gen)
+  Organism(DNA dna, Vec2 position, RandomGen gen)
       : dna(dna), position(position), gen(gen)
   { }
 
@@ -58,8 +154,8 @@ class Organism {
     return 0.1;
   }
 
-  void step(double dt) {
-    position += dt * vec2(gen.range(-1,1), gen.range(-1,1));
+  void step(double dt, ResourceField* grid) {
+    position += dt * Vec2(gen.range(-1,1), gen.range(-1,1));
   }
 
   void draw() {
@@ -80,20 +176,25 @@ class Organism {
 
 class Simulation {
  private:
+  ResourceField resources;
   std::list<Organism> organisms;
 
  public:
+  Simulation() : resources(Vec2(-16,-12), Vec2(16,12), 32, 24) 
+  { }
+
   void add_organism(const Organism& org) {
     organisms.push_back(org);
   }
 
   void step(double dt) {
     for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end(); ++i) {
-      i->step(dt);
+      i->step(dt, &resources);
     }
   }
 
   void draw() {
+    resources.draw();
     for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end(); ++i) {
       i->draw();
     }
@@ -122,10 +223,10 @@ int main() {
     return 1;
   }
 
-  glScaled(1/4.0, 1/3.0, 1);
+  glScaled(1/16.0, 1/12.0, 1);
 
   Simulation sim;
-  sim.add_organism(Organism(DNA(), vec2(0,0), RandomGen()));
+  sim.add_organism(Organism(DNA(), Vec2(0,0), RandomGen()));
 
   double dt = 1/30.0f;
   while(true) {
