@@ -1,6 +1,8 @@
 #ifndef __RESOURCE_H__
 #define __RESOURCE_H__
 
+#include <vector>
+#include <stack>
 #include "SDL_opengl.h"
 #include "Vec2.h"
 #include "Color.h"
@@ -16,7 +18,7 @@ class ResourceField {
   int dim_x, dim_y;
   double regen;
 
-  std::vector< std::vector<Resource> > grid;
+  std::vector< std::vector< std::stack<Resource> > > grid;
 
   bool to_grid(Vec2 position, int* x, int* y) {
     *x = int(round(dim_x * ((position.x - ll.x) / (ur.x - ll.x))));
@@ -27,11 +29,11 @@ class ResourceField {
  public:
   ResourceField(Vec2 ll, Vec2 ur, int dim_x, int dim_y)
       : ll(ll), ur(ur), dim_x(dim_x), dim_y(dim_y), regen(0),
-        grid(dim_x, std::vector<Resource>(dim_y))
+        grid(dim_x, std::vector< std::stack<Resource> >(dim_y))
   {
     for (int i = 0; i < dim_x; i++) {
       for (int j = 0; j < dim_y; j++) {
-        grid[i][j] = RES_ENERGY;
+        grid[i][j].push(RES_ENERGY);
       }
     }
   }
@@ -52,13 +54,15 @@ class ResourceField {
     for (int i = 0; i < dim_x; i++) {
       for (int j = 0; j < dim_y; j++) {
         Vec2 p = ll + Vec2(i * dx, j * dy);
-        resource_color(grid[i][j]).set();
-        glBegin(GL_POLYGON);
-          glVertex2d(p.x - dx/2, p.y - dy/2);
-          glVertex2d(p.x - dx/2, p.y + dy/2);
-          glVertex2d(p.x + dx/2, p.y + dy/2);
-          glVertex2d(p.x + dx/2, p.y - dy/2);
-        glEnd();
+        if (!grid[i][j].empty()) {
+          resource_color(grid[i][j].top()).set();
+          glBegin(GL_POLYGON);
+            glVertex2d(p.x - dx/2, p.y - dy/2);
+            glVertex2d(p.x - dx/2, p.y + dy/2);
+            glVertex2d(p.x + dx/2, p.y + dy/2);
+            glVertex2d(p.x + dx/2, p.y - dy/2);
+          glEnd();
+        }
       }
     }
   }
@@ -68,7 +72,7 @@ class ResourceField {
     while (regen < 0) {
       int i = std::min((int)gen.range(0, dim_x), dim_x);
       int j = std::min((int)gen.range(0, dim_y), dim_y);
-      grid[i][j] = RES_ENERGY;
+      grid[i][j].push(RES_ENERGY);
 
       // poisson
       // XXX possible infinite loop if gen.range(0,1) can return exactly 1
@@ -79,25 +83,29 @@ class ResourceField {
   Resource take(Vec2 position) {
     int x, y;
     if (to_grid(position, &x, &y)) {
-      Resource r = grid[x][y];
-      grid[x][y] = RES_NONE;
-      return r;
+      if (grid[x][y].empty()) {
+        return RES_NONE;
+      }
+      else {
+        Resource r = grid[x][y].top();
+        grid[x][y].pop();
+        return r;
+      }
     }
     else {
-      return RES_NONE;
+      abort();
     }
   }
 
-  bool put(Vec2 position, Resource r) {
+  void put(Vec2 position, Resource r) {
     int x, y;
-    if (to_grid(position, &x, &y) && grid[x][y] == RES_NONE) {
-      grid[x][y] = r;
-      return true;
+    if (to_grid(position, &x, &y)) {
+      grid[x][y].push(r);
     }
     else {
-      return false;
+      abort();
     }
   }
 };
 
-#endif 
+#endif

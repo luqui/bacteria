@@ -114,10 +114,10 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
     Resource r = grid.take(position);
     if (r == RES_ENERGY) {
       energy += 20;
-      assert(grid.put(position, RES_POOP));
+      grid.put(position, RES_POOP);
     }
     else {
-      assert(grid.put(position, r));
+      grid.put(position, r);
     }
   }
 
