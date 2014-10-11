@@ -1,2 +1,2 @@
 all:
-	g++ -g -Wall -Wno-unused-function -o main main.cpp `sdl-config --cflags --libs` -lGL
+	g++ -O2 -Wall -Wno-unused-function -o main main.cpp `sdl-config --cflags --libs` -lGL

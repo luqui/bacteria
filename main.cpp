@@ -23,13 +23,13 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  SDL_Surface* surface = SDL_SetVideoMode(800, 600, 24, SDL_OPENGL);
+  SDL_Surface* surface = SDL_SetVideoMode(1200, 900, 24, SDL_OPENGL);
   if (surface == NULL) {
     std::cerr << "Failed to initialize video mode: " << SDL_GetError() << std::endl;
     return 1;
   }
 
-  glScaled(1/16.0, 1/12.0, 1);
+  glScaled(1/32.0, 1/24.0, 1);
 
   Simulation sim;
 
@@ -45,8 +45,7 @@ int main(int argc, char** argv) {
     glClear(GL_COLOR_BUFFER_BIT);
     sim.draw();
     SDL_GL_SwapBuffers();
-
-    SDL_Delay(1000*dt);
+    //SDL_Delay(1000*dt);
   }
 
   SDL_Quit();

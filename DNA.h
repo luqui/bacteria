@@ -12,8 +12,9 @@ enum InstructionType {
   INSTR_ROTATE,
   INSTR_ABSORB,
   INSTR_EXCRETE,
-  INSTR_METABOLIZE,
-  INSTR_METABOLIZE2,
+  INSTR_METABOLIZE_ENERGY,
+  INSTR_METABOLIZE_POOP,
+  INSTR_METABOLIZE_DESSERT,
   INSTR_DIVIDE,
   INSTR_CMP_ENERGY,
   INSTR_RANDOM_BRANCH,
@@ -34,10 +35,6 @@ struct Instruction {
     struct {
       double speed;
     } rotate;
-
-    struct {
-      int child_ip;
-    } divide;
 
     struct {
       double threshold;
@@ -61,9 +58,6 @@ struct Instruction {
         break;
       case INSTR_ROTATE:
         instr.rotate.speed = g.range(0,10);
-        break;
-      case INSTR_DIVIDE:
-        instr.divide.child_ip = g.int_range(0, DNA_SIZE);
         break;
       case INSTR_CMP_ENERGY:
         instr.cmp_energy.threshold = g.range(0,40);
@@ -90,9 +84,6 @@ struct Instruction {
         break;
       case INSTR_ROTATE:
         rotate.speed += g.range(-1,1);
-        break;
-      case INSTR_DIVIDE:
-        divide.child_ip = g.int_range(0, DNA_SIZE);
         break;
       case INSTR_CMP_ENERGY:
         cmp_energy.threshold += g.range(-5,5);

@@ -14,7 +14,7 @@ class Organism {
   Vec2 position;
   double angle;
   double energy;
-  std::stack<Resource> buffer;
+  std::deque<Resource> buffer;
 
   int ip;
 
@@ -25,10 +25,23 @@ class Organism {
     angle = gen.range(0, 2*M_PI);
   }
 
+  Vec2 get_position() const { return position; }
+
   double size() const {
     return 0.1;
   }
 
+  bool find_resource(Resource r) {
+    for (std::deque<Resource>::iterator i = buffer.begin(); i != buffer.end(); ++i) {
+      if (*i == r) {
+        buffer.erase(i);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void drop_buffer(class Simulation* sim);
   void step(double dt, class Simulation* sim, bool* death);
 
   void draw() {
@@ -55,7 +68,7 @@ class Simulation {
   double regen;
 
  public:
-  Simulation() : resources(Vec2(-16,-12), Vec2(16,12), 64, 48), regen(0)
+  Simulation() : resources(Vec2(-32,-24), Vec2(32,24), 64, 48), regen(0)
   { }
 
   ResourceField& get_resources() { return resources; }
@@ -80,11 +93,11 @@ class Simulation {
 
     regen -= dt;
     while (regen < 0) {
-      Vec2 p = Vec2(gen.range(-10,10), gen.range(-8,8));
+      Vec2 p = Vec2(gen.range(-32,-12), gen.range(-24,-4));
       RandomGen g = gen.split();
-      add_organism(Organism(DNA::generate(gen), p, g, 10, gen.int_range(0, DNA_SIZE)));
+      add_organism(Organism(DNA::generate(gen), p, g, 2, gen.int_range(0, DNA_SIZE)));
 
-      regen += -std::log(1 - gen.range(0,1));
+      regen += -std::log(1 - gen.range(0,1)) / 20;
     }
   }
 
@@ -101,17 +114,42 @@ class Simulation {
         SDL_Quit();
         std::exit(0);
         break;
+      case SDL_KEYDOWN:
+        if (e->key.keysym.sym == SDLK_SPACE) {
+          kill_eden();
+        }
+        break;
     }
   }
 
   void clamp(Vec2* v) {
-    if (v->x < -16) { v->x = -16; }
-    if (v->x > 15) { v->x = 15; }
-    if (v->y < -12) { v->y = -12; }
-    if (v->y > 11) { v->y = 11; }
+    if (v->x < -32) { v->x = -32; }
+    if (v->x > 31) { v->x = 31; }
+    if (v->y < -24) { v->y = -24; }
+    if (v->y > 23) { v->y = 23; }
+  }
+
+  void kill_eden() {
+    for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end();) {
+      Vec2 p = i->get_position();
+      if (p.x < -12 && p.y < -4) {
+        organisms.erase(i++);
+      }
+      else {
+        ++i;
+      }
+    }
   }
 };
 
+
+inline void Organism::drop_buffer(Simulation* sim) {
+  ResourceField& grid = sim->get_resources();
+  while (!buffer.empty()) {
+    grid.put(position, buffer.back());
+    buffer.pop_back();
+  }
+}
 
 inline void Organism::step(double dt, Simulation* sim, bool* death) {
   ResourceField& grid = sim->get_resources();
@@ -120,10 +158,7 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
     energy -= 0.001;   // small cost to thinking
 
     if (energy < 1) {
-      while (!buffer.empty()) {
-        grid.put(position, buffer.top());
-        buffer.pop();
-      }
+      drop_buffer(sim);
       *death = true;
       return;
     }
@@ -138,7 +173,7 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
       case INSTR_FORWARD: {
         position += dt * i.forward.speed * Vec2(std::cos(angle), std::sin(angle));
         sim->clamp(&position);
-        energy -= i.forward.speed * dt;
+        energy -= std::abs(i.forward.speed) * dt;
         return;
       }
 
@@ -150,56 +185,58 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
       case INSTR_ABSORB: {
         Resource r = grid.take(position);
         if (r != RES_NONE) {
-          buffer.push(r);
+          buffer.push_back(r);
         }
         return;
       }
 
       case INSTR_EXCRETE: {
         if (!buffer.empty()) {
-          grid.put(position, buffer.top());
-          buffer.pop();
+          grid.put(position, buffer.back());
+          buffer.pop_back();
         }
         break;
       }
 
-      case INSTR_METABOLIZE: {
-        if (!buffer.empty()) {
-          Resource r = buffer.top();
-          buffer.pop();
+      case INSTR_METABOLIZE_ENERGY: {
+        // dessert is toxic to energy metabolizers
+        if (find_resource(RES_DESSERT)) {
+          drop_buffer(sim);
+          grid.put(position, RES_DESSERT);
+          *death = true;
+          return;
+        }
 
-          if (r == RES_ENERGY) {
-            grid.put(position, RES_POOP);
+        if (find_resource(RES_ENERGY)) {
+          grid.put(position, RES_POOP);
+          energy += 20;
+        }
+        return;
+      }
+
+      case INSTR_METABOLIZE_POOP: {
+        if (find_resource(RES_POOP)) {
+          if (find_resource(RES_POOP)) {
             energy += 20;
+            grid.put(position, RES_DESSERT);
           }
           else {
-            grid.put(position, r);
+            buffer.push_back(RES_POOP);
           }
         }
         return;
       }
 
-      case INSTR_METABOLIZE2: {
-        if (buffer.size() >= 2) {
-          Resource r = buffer.top();
-          buffer.pop();
-
-          Resource r2 = buffer.top();
-          buffer.pop();
-
-          if (r == RES_POOP && r2 == RES_POOP) {
-            grid.put(position, RES_ENERGY);
-          }
-          else {
-            grid.put(position, r2);
-            buffer.push(r);
-          }
+      case INSTR_METABOLIZE_DESSERT: {
+        if (find_resource(RES_DESSERT)) {
+          energy += 20;
         }
         return;
       }
 
       case INSTR_DIVIDE: {
         //divide
+        drop_buffer(sim);
         *death = true;
 
         RandomGen g1 = gen.split();
@@ -212,7 +249,7 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
 
         DNA dna2 = dna;
         dna2.mutate(g2);
-        Organism o2(dna2, position, g2, energy/2, i.divide.child_ip);
+        Organism o2(dna2, position, g2, energy/2, ip);
         sim->add_organism(o2);
         return;
       }

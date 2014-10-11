@@ -12,6 +12,10 @@ struct Color {
   }
 };
 
+inline Color operator* (double x, const Color& c) {
+  return Color(x*c.r, x*c.g, x*c.b);
+}
+
 
 
 #endif

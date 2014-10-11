@@ -8,7 +8,7 @@
 #include "Color.h"
 #include "RandomGen.h"
 
-enum Resource { RES_NONE, RES_ENERGY, RES_POOP };
+enum Resource { RES_NONE, RES_ENERGY, RES_POOP, RES_DESSERT };
 
 class ResourceField {
  private:
@@ -43,6 +43,7 @@ class ResourceField {
       case RES_NONE: return Color(0,0,0);
       case RES_ENERGY: return Color(0.2,0.2,0);
       case RES_POOP: return Color(0.2,0.1,0);
+      case RES_DESSERT: return Color(0.2,0,0.2);
       default: abort();
     }
   }
@@ -55,7 +56,8 @@ class ResourceField {
       for (int j = 0; j < dim_y; j++) {
         Vec2 p = ll + Vec2(i * dx, j * dy);
         if (!grid[i][j].empty()) {
-          resource_color(grid[i][j].top()).set();
+          double scale = 2-std::exp(-0.1*grid[i][j].size());
+          (scale*resource_color(grid[i][j].top())).set();
           glBegin(GL_POLYGON);
             glVertex2d(p.x - dx/2, p.y - dy/2);
             glVertex2d(p.x - dx/2, p.y + dy/2);
