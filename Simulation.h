@@ -35,7 +35,7 @@ class Organism {
     glPushMatrix();
     glTranslated(position.x, position.y, 0);
     glScaled(size(), size(), 1);
-    glColor3d(1,1,1);
+    dna.pigment.set();
     glBegin(GL_POLYGON);
       glVertex2d(-1,-1);
       glVertex2d(-1, 1);
@@ -174,6 +174,25 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
           }
           else {
             grid.put(position, r);
+          }
+        }
+        return;
+      }
+
+      case INSTR_METABOLIZE2: {
+        if (buffer.size() >= 2) {
+          Resource r = buffer.top();
+          buffer.pop();
+
+          Resource r2 = buffer.top();
+          buffer.pop();
+
+          if (r == RES_POOP && r2 == RES_POOP) {
+            grid.put(position, RES_ENERGY);
+          }
+          else {
+            grid.put(position, r2);
+            buffer.push(r);
           }
         }
         return;

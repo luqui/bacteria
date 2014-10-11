@@ -2,6 +2,7 @@
 #define __DNA_H__
 
 #include <vector>
+#include "Color.h"
 #include "Vec2.h"
 #include "RandomGen.h"
 
@@ -12,6 +13,7 @@ enum InstructionType {
   INSTR_ABSORB,
   INSTR_EXCRETE,
   INSTR_METABOLIZE,
+  INSTR_METABOLIZE2,
   INSTR_DIVIDE,
   INSTR_CMP_ENERGY,
   INSTR_RANDOM_BRANCH,
@@ -113,19 +115,24 @@ struct Instruction {
 
 class DNA {
  private:
-  DNA() : code(DNA_SIZE) { }
+  DNA() : code(DNA_SIZE), pigment(0,0,0) { }
 
  public:
   std::vector<Instruction> code;
+  Color pigment;
 
   void mutate(RandomGen& g) {
     int instr = g.int_range(0, NUM_INSTRS);
+    pigment.r = clamp(0.0, 1.0, pigment.r + g.range(-0.05,0.05));
+    pigment.g = clamp(0.0, 1.0, pigment.g + g.range(-0.05,0.05));
+    pigment.b = clamp(0.0, 1.0, pigment.b + g.range(-0.05,0.05));
 
     code[instr].mutate(g);
   }
 
   static DNA generate(RandomGen& g) {
     DNA dna;
+    dna.pigment = Color(g.range(0,1), g.range(0,1), g.range(0,1));
     for (int i = 0; i < DNA_SIZE; i++) {
       dna.code[i] = Instruction::generate(g);
     }
