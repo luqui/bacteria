@@ -1,6 +1,7 @@
 #ifndef __SIMULATION_H__
 #define __SIMULATION_H__
 
+#include <stack>
 #include "RandomGen.h"
 #include "Vec2.h"
 #include "DNA.h"
@@ -9,14 +10,20 @@
 class Organism {
  private:
   DNA dna;
-  Vec2 position;
   RandomGen gen;
+  Vec2 position;
+  double angle;
   double energy;
+  std::stack<Resource> buffer;
+
+  int ip;
 
  public:
-  Organism(DNA dna, Vec2 position, RandomGen gen, double energy)
-      : dna(dna), position(position), gen(gen), energy(energy)
-  { }
+  Organism(DNA dna, Vec2 position, RandomGen gen, double energy, int ip)
+      : dna(dna), gen(gen), position(position), energy(energy), ip(ip)
+  {
+    angle = gen.range(0, 2*M_PI);
+  }
 
   double size() const {
     return 0.1;
@@ -97,48 +104,109 @@ class Simulation {
 
 
 inline void Organism::step(double dt, Simulation* sim, bool* death) {
-  position += dt * dna.speed * Vec2(gen.range(-1,1), gen.range(-1,1));
-  sim->clamp(&position);
-
-  energy -= dt * dna.speed;
-
-  if (energy <= 1) {
-    *death = true;
-    return;
-  }
-
-
   ResourceField& grid = sim->get_resources();
 
-  if (energy < dna.energy_to_eat) {
-    Resource r = grid.take(position);
-    if (r == RES_ENERGY) {
-      energy += 20;
-      grid.put(position, RES_POOP);
+  while (true) {
+    energy -= 0.001;   // small cost to thinking
+
+    if (energy < 1) {
+      while (!buffer.empty()) {
+        grid.put(position, buffer.top());
+        buffer.pop();
+      }
+      *death = true;
+      return;
     }
-    else {
-      grid.put(position, r);
+
+    Instruction& i = dna.code[ip];
+    ip = i.next;
+    switch (i.type) {
+      case INSTR_IDLE: {
+        return;
+      }
+
+      case INSTR_FORWARD: {
+        position += dt * i.forward.speed * Vec2(std::cos(angle), std::sin(angle));
+        sim->clamp(&position);
+        energy -= i.forward.speed * dt;
+        return;
+      }
+
+      case INSTR_ROTATE: {
+        angle += dt * i.rotate.speed;
+        break;
+      }
+
+      case INSTR_ABSORB: {
+        Resource r = grid.take(position);
+        if (r != RES_NONE) {
+          buffer.push(r);
+        }
+        return;
+      }
+
+      case INSTR_EXCRETE: {
+        if (!buffer.empty()) {
+          grid.put(position, buffer.top());
+          buffer.pop();
+        }
+        break;
+      }
+
+      case INSTR_METABOLIZE: {
+        if (!buffer.empty()) {
+          Resource r = buffer.top();
+          buffer.pop();
+
+          if (r == RES_ENERGY) {
+            grid.put(position, RES_POOP);
+            energy += 20;
+          }
+          else {
+            grid.put(position, r);
+          }
+        }
+        return;
+      }
+
+      case INSTR_DIVIDE: {
+        //divide
+        *death = true;
+
+        RandomGen g1, g2;
+        gen.split(&g1, &g2);
+
+        DNA dna1 = dna;
+        dna1.mutate(g1);
+        Organism o1(dna1, position, g1, energy/2, ip);
+        sim->add_organism(o1);
+
+        DNA dna2 = dna;
+        dna2.mutate(g2);
+        Organism o2(dna2, position, g2, energy/2, i.divide.child_ip);
+        sim->add_organism(o2);
+        return;
+      }
+
+      case INSTR_CMP_ENERGY: {
+        if (energy >= i.cmp_energy.threshold) {
+          ip = i.cmp_energy.greater;
+        }
+        break;
+      }
+
+      case INSTR_RANDOM_BRANCH: {
+        if (gen.range(0,1) < i.random_branch.probability) {
+          ip = i.random_branch.branch;
+        }
+        break;
+      }
+
+      default: {
+        abort();
+      }
     }
   }
-
-  if (energy > dna.energy_to_split) {
-    //divide
-    *death = true;
-
-    RandomGen g1, g2;
-    gen.split(&g1, &g2);
-
-    DNA dna1 = dna;
-    dna1.mutate(g1);
-    Organism o1(dna1, position, g1, energy/2);
-    sim->add_organism(o1);
-
-    DNA dna2 = dna;
-    dna2.mutate(g2);
-    Organism o2(dna2, position, g2, energy/2);
-    sim->add_organism(o2);
-  }
-
 }
 
 

@@ -36,4 +36,9 @@ static Vec2 operator - (Vec2 u, const Vec2& v) {
   return u -= v;
 }
 
+template<class T>
+T clamp(T min, T max, T x) {
+  return x < min ? min : x > max ? max : x;
+}
+
 #endif

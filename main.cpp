@@ -33,7 +33,8 @@ int main(int argc, char** argv) {
 
   Simulation sim;
   {
-    Organism o(DNA::initial(), Vec2(0,0), RandomGen(), 10);
+    RandomGen gen;
+    Organism o(DNA::generate(gen), Vec2(0,0), gen, 10, 0);
     sim.add_organism(o);
   }
 

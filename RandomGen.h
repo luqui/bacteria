@@ -8,6 +8,10 @@ class RandomGen {
     return min + (max - min) * r;
   }
 
+  int int_range(int min, int max) {
+    return min + std::rand() % (max - min);
+  }
+
   void split(RandomGen* g1, RandomGen* g2) {
     *g1 = *this;
     *g2 = *this;
