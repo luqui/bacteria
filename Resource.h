@@ -76,7 +76,7 @@ class ResourceField {
 
       // poisson
       // XXX possible infinite loop if gen.range(0,1) can return exactly 1
-      regen += -std::log(1 - gen.range(0,1)) * 5 * dt;
+      regen += -std::log(1 - gen.range(0,1)) * 0.2;
     }
   }
 

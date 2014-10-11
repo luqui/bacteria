@@ -12,9 +12,8 @@ class RandomGen {
     return min + std::rand() % (max - min);
   }
 
-  void split(RandomGen* g1, RandomGen* g2) {
-    *g1 = *this;
-    *g2 = *this;
+  RandomGen split() {
+    return *this;
   }
 };
 

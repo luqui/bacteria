@@ -32,11 +32,6 @@ int main(int argc, char** argv) {
   glScaled(1/16.0, 1/12.0, 1);
 
   Simulation sim;
-  {
-    RandomGen gen;
-    Organism o(DNA::generate(gen), Vec2(0,0), gen, 10, 0);
-    sim.add_organism(o);
-  }
 
   double dt = 1/30.0f;
   while(true) {

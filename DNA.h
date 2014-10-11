@@ -71,7 +71,10 @@ struct Instruction {
         instr.random_branch.probability = g.range(0,1);
         instr.random_branch.branch = g.int_range(0, DNA_SIZE);
         break;
+      default:
+        break;
     }
+    return instr;
   }
 
   void mutate(RandomGen& g) {
@@ -86,6 +89,9 @@ struct Instruction {
       case INSTR_ROTATE:
         rotate.speed += g.range(-1,1);
         break;
+      case INSTR_DIVIDE:
+        divide.child_ip = g.int_range(0, DNA_SIZE);
+        break;
       case INSTR_CMP_ENERGY:
         cmp_energy.threshold += g.range(-5,5);
         if (g.range(0,1) < 0.1) {
@@ -99,13 +105,17 @@ struct Instruction {
           random_branch.branch = g.int_range(0, NUM_INSTRS);
         }
         break;
+      default:
+        break;
     }
   }
 };
 
-struct DNA {
+class DNA {
+ private:
   DNA() : code(DNA_SIZE) { }
 
+ public:
   std::vector<Instruction> code;
 
   void mutate(RandomGen& g) {
@@ -119,6 +129,7 @@ struct DNA {
     for (int i = 0; i < DNA_SIZE; i++) {
       dna.code[i] = Instruction::generate(g);
     }
+    return dna;
   }
 };
 

@@ -52,9 +52,10 @@ class Simulation {
   ResourceField resources;
   std::list<Organism> organisms;
   RandomGen gen;
+  double regen;
 
  public:
-  Simulation() : resources(Vec2(-16,-12), Vec2(16,12), 64, 48)
+  Simulation() : resources(Vec2(-16,-12), Vec2(16,12), 64, 48), regen(0)
   { }
 
   ResourceField& get_resources() { return resources; }
@@ -76,6 +77,15 @@ class Simulation {
     }
 
     resources.step(dt, gen);
+
+    regen -= dt;
+    while (regen < 0) {
+      Vec2 p = Vec2(gen.range(-10,10), gen.range(-8,8));
+      RandomGen g = gen.split();
+      add_organism(Organism(DNA::generate(gen), p, g, 10, gen.int_range(0, DNA_SIZE)));
+
+      regen += -std::log(1 - gen.range(0,1));
+    }
   }
 
   void draw() {
@@ -173,8 +183,8 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
         //divide
         *death = true;
 
-        RandomGen g1, g2;
-        gen.split(&g1, &g2);
+        RandomGen g1 = gen.split();
+        RandomGen g2 = gen.split();
 
         DNA dna1 = dna;
         dna1.mutate(g1);
