@@ -1,6 +1,7 @@
 #ifndef __RESOURCE_H__
 #define __RESOURCE_H__
 
+#include <string>
 #include <vector>
 #include <stack>
 #include "SDL_opengl.h"
@@ -9,6 +10,16 @@
 #include "RandomGen.h"
 
 enum Resource { RES_NONE, RES_ENERGY, RES_POOP, RES_DESSERT };
+
+inline std::string show_resource(Resource r) {
+  switch(r) {
+    case RES_NONE: return "NONE";
+    case RES_ENERGY: return "ENERGY";
+    case RES_POOP: return "POOP";
+    case RES_DESSERT: return "DESSERT";
+    default: return "???";
+  }
+}
 
 class ResourceField {
  private:

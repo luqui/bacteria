@@ -1,6 +1,7 @@
 #ifndef __DNA_H__
 #define __DNA_H__
 
+#include <iostream>
 #include <vector>
 #include "Color.h"
 #include "Vec2.h"
@@ -102,6 +103,49 @@ struct Instruction {
         break;
     }
   }
+
+  void dump(std::ostream& out) {
+    switch (type) {
+      case INSTR_IDLE:
+        out << "IDLE";
+        break;
+      case INSTR_FORWARD:
+        out << "FORWARD(" << forward.speed << ")";
+        break;
+      case INSTR_ROTATE:
+        out << "ROTATE(" << rotate.speed << ")";
+        break;
+      case INSTR_ABSORB:
+        out << "ABSORB";
+        break;
+      case INSTR_EXCRETE:
+        out << "EXCRETE";
+        break;
+      case INSTR_METABOLIZE_ENERGY:
+        out << "METABOLIZE_ENERGY";
+        break;
+      case INSTR_METABOLIZE_POOP:
+        out << "METABOLIZE_POOP";
+        break;
+      case INSTR_METABOLIZE_DESSERT:
+        out << "METABOLIZE_DESSERT";
+        break;
+      case INSTR_DIVIDE:
+        out << "DIVIDE";
+        break;
+      case INSTR_CMP_ENERGY:
+        out << "CMP_ENERGY(> " << cmp_energy.threshold << " ? " << cmp_energy.greater << ")";
+        break;
+      case INSTR_RANDOM_BRANCH:
+        out << "CMP_RANDOM_BRANCH(p=" << random_branch.probability << " ? "
+                                      << random_branch.branch << ")";
+        break;
+      default:
+        out << "???";
+        break;
+    }
+    out << " --> " << next;
+  }
 };
 
 class DNA {
@@ -128,6 +172,14 @@ class DNA {
       dna.code[i] = Instruction::generate(g);
     }
     return dna;
+  }
+
+  void dump(std::ostream& out) {
+    for (int i = 0; i < DNA_SIZE; i++) {
+      out << i << ": ";
+      code[i].dump(out);
+      out << "\n";
+    }
   }
 };
 

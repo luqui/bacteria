@@ -1,6 +1,8 @@
 #ifndef __SIMULATION_H__
 #define __SIMULATION_H__
 
+#include <sstream>
+#include <fstream>
 #include <stack>
 #include "RandomGen.h"
 #include "Vec2.h"
@@ -56,6 +58,22 @@ class Organism {
       glVertex2d( 1,-1);
     glEnd();
     glPopMatrix();
+  }
+
+  void dump(std::ostream& out) {
+    out << "position = (" << position.x << "," << position.y << ")\n";
+    out << "angle = " << angle << "\n";
+    out << "energy = " << energy << "\n";
+    out << "buffer = [";
+    for (std::deque<Resource>::iterator i = buffer.begin(); i != buffer.end(); ++i) {
+      out << show_resource(*i);
+      out << ",";
+    }
+    out << "]\n";
+    out << "ip = " << ip << "\n";
+    out << "\n";
+    out << "CODE:\n";
+    dna.dump(out);
   }
 };
 
@@ -118,8 +136,24 @@ class Simulation {
         if (e->key.keysym.sym == SDLK_SPACE) {
           kill_eden();
         }
+        if (e->key.keysym.sym == SDLK_d) {
+          dump();
+        }
         break;
     }
+  }
+
+  void dump() {
+    std::stringstream ss;
+    ss << "DUMP_" << std::time(NULL);
+    std::ofstream fout(ss.str().c_str());
+    for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end(); ++i) {
+      i->dump(fout);
+      fout << "\n-----------------------\n\n";
+    }
+    fout.close();
+
+    std::cout << "Dumped to " << ss.str() << "\n";
   }
 
   void clamp(Vec2* v) {
