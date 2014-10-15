@@ -223,14 +223,13 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
         Resource r = grid.take(position);
         if (r != RES_NONE) {
           if (r % i.metabolize.factor == 0) {
-            energy += 5 * i.metabolize.factor;
-            Resource p = r / i.metabolize.factor;
-            grid.put(position, p == 1 ? 1 : p+1);
+            energy += 5 * (i.metabolize.factor - 1);
+            Resource p = r - i.metabolize.factor + 1;
+            grid.put(position, p);
           }
           else {
-            energy -= 0.2;
             grid.put(position, r);
-          } 
+          }
         }
         return;
       }
