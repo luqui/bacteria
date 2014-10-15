@@ -9,6 +9,9 @@
 #include "DNA.h"
 #include "Resource.h"
 
+const double WIDTH = 64;
+const double HEIGHT = 48;
+
 class Organism {
  private:
   DNA dna;
@@ -33,17 +36,6 @@ class Organism {
     return 0.1;
   }
 
-  bool find_resource(Resource r) {
-    for (std::deque<Resource>::iterator i = buffer.begin(); i != buffer.end(); ++i) {
-      if (*i == r) {
-        buffer.erase(i);
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void drop_buffer(class Simulation* sim);
   void step(double dt, class Simulation* sim, bool* death);
 
   void draw() {
@@ -64,12 +56,6 @@ class Organism {
     out << "position = (" << position.x << "," << position.y << ")\n";
     out << "angle = " << angle << "\n";
     out << "energy = " << energy << "\n";
-    out << "buffer = [";
-    for (std::deque<Resource>::iterator i = buffer.begin(); i != buffer.end(); ++i) {
-      out << show_resource(*i);
-      out << ",";
-    }
-    out << "]\n";
     out << "ip = " << ip << "\n";
     out << "\n";
     out << "CODE:\n";
@@ -86,7 +72,7 @@ class Simulation {
   double regen;
 
  public:
-  Simulation() : resources(Vec2(-32,-24), Vec2(32,24), 64, 48), regen(0)
+  Simulation() : resources(Vec2(-WIDTH/2,-HEIGHT/2), Vec2(WIDTH/2,HEIGHT/2), (int)WIDTH, (int)HEIGHT), regen(0)
   { }
 
   ResourceField& get_resources() { return resources; }
@@ -111,18 +97,18 @@ class Simulation {
 
     regen -= dt;
     while (regen < 0) {
-      Vec2 p = Vec2(gen.range(-32,31), gen.range(-24,23));
+      Vec2 p = Vec2(gen.range(-WIDTH/2,WIDTH/2-1), gen.range(-HEIGHT/2,HEIGHT/2-1));
       Resource r = resources.take(p);
       if (r > 1) {
         resources.put(p, r-1);
+      }
+      else if (r == 1) {
+        resources.put(p, r);
         RandomGen g = gen.split();
         add_organism(Organism(DNA::generate(gen), p, g, 2, gen.int_range(0, DNA_SIZE)));
       }
-      else {
-        resources.put(p, r);
-      }
 
-      regen += -std::log(1 - gen.range(0,1)) / 5;
+      regen += -std::log(1 - gen.range(0,1)) / 20;
     }
   }
 
@@ -164,10 +150,10 @@ class Simulation {
   }
 
   void clamp(Vec2* v) {
-    if (v->x < -32) { v->x = -32; }
-    if (v->x > 31) { v->x = 31; }
-    if (v->y < -24) { v->y = -24; }
-    if (v->y > 23) { v->y = 23; }
+    if (v->x < -WIDTH/2) { v->x = -WIDTH/2; }
+    if (v->x > WIDTH/2-1) { v->x = WIDTH/2-1; }
+    if (v->y < -HEIGHT/2) { v->y = -HEIGHT/2; }
+    if (v->y > HEIGHT/2-1) { v->y = HEIGHT/2-1; }
   }
 
   void kill_eden() {
@@ -184,14 +170,6 @@ class Simulation {
 };
 
 
-inline void Organism::drop_buffer(Simulation* sim) {
-  ResourceField& grid = sim->get_resources();
-  while (!buffer.empty()) {
-    grid.put(position, buffer.back());
-    buffer.pop_back();
-  }
-}
-
 inline void Organism::step(double dt, Simulation* sim, bool* death) {
   ResourceField& grid = sim->get_resources();
 
@@ -199,7 +177,6 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
     energy -= 0.002;   // small cost to thinking
 
     if (energy < 1) {
-      drop_buffer(sim);
       *death = true;
       return;
     }
@@ -223,42 +200,23 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
         break;
       }
 
-      case INSTR_ABSORB: {
+      case INSTR_METABOLIZE: {
         Resource r = grid.take(position);
         if (r != RES_NONE) {
-          buffer.push_back(r);
-        }
-        return;
-      }
-
-      case INSTR_EXCRETE: {
-        if (!buffer.empty()) {
-          grid.put(position, buffer.back());
-          buffer.pop_back();
-        }
-        break;
-      }
-
-      case INSTR_METABOLIZE: {
-        for (int r = 0; r < buffer.size(); r++) {
-          // excrete everything of higher depth
-          if (buffer[r] > i.metabolize.depth) {
-            grid.put(position, buffer[r]);
-            buffer.erase(buffer.begin()+r);
-            r--;
-          }
-        }
-
-        if (find_resource(i.metabolize.depth)) {
-          grid.put(position, i.metabolize.depth+1);
-          energy += 10;
+            if (r == i.metabolize.depth && r < RES_MAX) {
+                grid.put(position, r+1);
+                energy += 20.0;
+            }
+            else {
+                grid.put(position, r);
+                energy -= 0.2;
+            }
         }
         return;
       }
 
       case INSTR_DIVIDE: {
         //divide
-        drop_buffer(sim);
         *death = true;
 
         RandomGen g1 = gen.split();

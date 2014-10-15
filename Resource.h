@@ -13,6 +13,7 @@
 typedef int Resource;
 
 const Resource RES_NONE = 0;
+const Resource RES_MAX = 8;
 
 inline std::string show_resource(Resource r) {
   std::stringstream ss;
@@ -43,19 +44,15 @@ class ResourceField {
   {
     for (int i = 0; i < dim_x; i++) {
       for (int j = 0; j < dim_y; j++) {
-        grid[i][j].push(2);
+        grid[i][j].push(1);
       }
     }
   }
 
   static Color resource_color(Resource res) {
-    if (res == RES_NONE) {
-      return Color(0,0,0);
-    }
-    else {
-      double p = 1.0-2.0/(1+res);
-      return Color(p/2,res/20.0,(1-p)/2);
-    }
+    int green = res % 3;
+    int rb = res / 3;
+    return Color(rb / 6.0, green / 6.0, rb / 6.0);
   }
 
   void draw() {
@@ -66,8 +63,7 @@ class ResourceField {
       for (int j = 0; j < dim_y; j++) {
         Vec2 p = ll + Vec2(i * dx, j * dy);
         if (!grid[i][j].empty()) {
-          double scale = 2-std::exp(-0.1*grid[i][j].size());
-          (scale*resource_color(grid[i][j].top())).set();
+          resource_color(grid[i][j].top()).set();
           glBegin(GL_POLYGON);
             glVertex2d(p.x - dx/2, p.y - dy/2);
             glVertex2d(p.x - dx/2, p.y + dy/2);

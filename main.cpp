@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  glScaled(1/32.0, 1/24.0, 1);
+  glScaled(2/WIDTH, 2/HEIGHT, 1);
 
   Simulation sim;
 

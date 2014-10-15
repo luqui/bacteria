@@ -11,8 +11,6 @@ enum InstructionType {
   INSTR_IDLE,
   INSTR_FORWARD,
   INSTR_ROTATE,
-  INSTR_ABSORB,
-  INSTR_EXCRETE,
   INSTR_METABOLIZE,
   INSTR_DIVIDE,
   INSTR_CMP_ENERGY,
@@ -122,12 +120,6 @@ struct Instruction {
         break;
       case INSTR_ROTATE:
         out << "ROTATE(" << rotate.speed << ")";
-        break;
-      case INSTR_ABSORB:
-        out << "ABSORB";
-        break;
-      case INSTR_EXCRETE:
-        out << "EXCRETE";
         break;
       case INSTR_METABOLIZE:
         out << "METABOLIZE(" << metabolize.depth << ")";
