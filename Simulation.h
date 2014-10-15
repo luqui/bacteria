@@ -9,8 +9,8 @@
 #include "DNA.h"
 #include "Resource.h"
 
-const double WIDTH = 64;
-const double HEIGHT = 48;
+const double WIDTH = 128;
+const double HEIGHT = 96;
 
 class Organism {
  private:
@@ -108,7 +108,7 @@ class Simulation {
         add_organism(Organism(DNA::generate(gen), p, g, 2, gen.int_range(0, DNA_SIZE)));
       }
 
-      regen += -std::log(1 - gen.range(0,1)) / 20;
+      regen += -std::log(1 - gen.range(0,1)) / (6.5e-3 * WIDTH * HEIGHT);
     }
   }
 
