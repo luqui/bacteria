@@ -63,7 +63,7 @@ struct Instruction {
         instr.rotate.speed = g.range(0,10);
         break;
       case INSTR_METABOLIZE:
-        instr.metabolize.depth = g.range(1,4);
+        instr.metabolize.depth = g.int_range(1,4);
         break;
       case INSTR_CMP_ENERGY:
         instr.cmp_energy.threshold = g.range(0,40);
