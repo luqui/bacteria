@@ -72,8 +72,10 @@ class Simulation {
   double regen;
 
  public:
-  Simulation() : resources(Vec2(-WIDTH/2,-HEIGHT/2), Vec2(WIDTH/2,HEIGHT/2), (int)WIDTH, (int)HEIGHT), regen(0)
+  Simulation() : resources(Vec2(-WIDTH/2,-HEIGHT/2), Vec2(WIDTH/2,HEIGHT/2), (int)WIDTH, (int)HEIGHT), regen(0), slow_it_down(true)
   { }
+
+  bool slow_it_down;
 
   ResourceField& get_resources() { return resources; }
 
@@ -124,7 +126,7 @@ class Simulation {
         break;
       case SDL_KEYDOWN:
         if (e->key.keysym.sym == SDLK_SPACE) {
-          kill_eden();
+          slow_it_down = !slow_it_down;
         }
         if (e->key.keysym.sym == SDLK_d) {
           dump();
@@ -151,18 +153,6 @@ class Simulation {
     if (v->x > WIDTH/2-1) { v->x = WIDTH/2-1; }
     if (v->y < -HEIGHT/2) { v->y = -HEIGHT/2; }
     if (v->y > HEIGHT/2-1) { v->y = HEIGHT/2-1; }
-  }
-
-  void kill_eden() {
-    for (std::list<Organism>::iterator i = organisms.begin(); i != organisms.end();) {
-      Vec2 p = i->get_position();
-      if (p.x < -12 && p.y < -4) {
-        organisms.erase(i++);
-      }
-      else {
-        ++i;
-      }
-    }
   }
 };
 

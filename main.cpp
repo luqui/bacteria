@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
   Simulation sim;
 
   double dt = 1/30.0f;
+  Uint32 ticks = SDL_GetTicks();
   while(true) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
@@ -42,10 +43,13 @@ int main(int argc, char** argv) {
 
     sim.step(dt);
 
-    glClear(GL_COLOR_BUFFER_BIT);
-    sim.draw();
-    SDL_GL_SwapBuffers();
-    //SDL_Delay(1000*dt);
+    Uint32 newticks = SDL_GetTicks();
+    if ((newticks - ticks) > 1000/30 || sim.slow_it_down) {
+      ticks = newticks;
+      glClear(GL_COLOR_BUFFER_BIT);
+      sim.draw();
+      SDL_GL_SwapBuffers();
+    }
   }
 
   SDL_Quit();
