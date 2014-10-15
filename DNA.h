@@ -13,9 +13,7 @@ enum InstructionType {
   INSTR_ROTATE,
   INSTR_ABSORB,
   INSTR_EXCRETE,
-  INSTR_METABOLIZE_ENERGY,
-  INSTR_METABOLIZE_POOP,
-  INSTR_METABOLIZE_DESSERT,
+  INSTR_METABOLIZE,
   INSTR_DIVIDE,
   INSTR_CMP_ENERGY,
   INSTR_RANDOM_BRANCH,
@@ -36,6 +34,10 @@ struct Instruction {
     struct {
       double speed;
     } rotate;
+
+    struct {
+      int depth;
+    } metabolize;
 
     struct {
       double threshold;
@@ -59,6 +61,9 @@ struct Instruction {
         break;
       case INSTR_ROTATE:
         instr.rotate.speed = g.range(0,10);
+        break;
+      case INSTR_METABOLIZE:
+        instr.metabolize.depth = g.range(1,4);
         break;
       case INSTR_CMP_ENERGY:
         instr.cmp_energy.threshold = g.range(0,40);
@@ -85,6 +90,9 @@ struct Instruction {
         break;
       case INSTR_ROTATE:
         rotate.speed += g.range(-1,1);
+        break;
+      case INSTR_METABOLIZE:
+        metabolize.depth += g.int_range(-1,2);
         break;
       case INSTR_CMP_ENERGY:
         cmp_energy.threshold += g.range(-5,5);
@@ -121,14 +129,8 @@ struct Instruction {
       case INSTR_EXCRETE:
         out << "EXCRETE";
         break;
-      case INSTR_METABOLIZE_ENERGY:
-        out << "METABOLIZE_ENERGY";
-        break;
-      case INSTR_METABOLIZE_POOP:
-        out << "METABOLIZE_POOP";
-        break;
-      case INSTR_METABOLIZE_DESSERT:
-        out << "METABOLIZE_DESSERT";
+      case INSTR_METABOLIZE:
+        out << "METABOLIZE(" << metabolize.depth << ")";
         break;
       case INSTR_DIVIDE:
         out << "DIVIDE";
@@ -158,9 +160,9 @@ class DNA {
 
   void mutate(RandomGen& g) {
     int instr = g.int_range(0, NUM_INSTRS);
-    pigment.r = clamp(0.0, 1.0, pigment.r + g.range(-0.05,0.05));
-    pigment.g = clamp(0.0, 1.0, pigment.g + g.range(-0.05,0.05));
-    pigment.b = clamp(0.0, 1.0, pigment.b + g.range(-0.05,0.05));
+    pigment.r = clamp(0.0, 1.0, pigment.r + g.range(-0.01,0.01));
+    pigment.g = clamp(0.0, 1.0, pigment.g + g.range(-0.01,0.01));
+    pigment.b = clamp(0.0, 1.0, pigment.b + g.range(-0.01,0.01));
 
     code[instr].mutate(g);
   }

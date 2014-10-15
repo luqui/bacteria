@@ -1,2 +1,2 @@
 all:
-	g++ -o main main.cpp `sdl-config --cflags --libs` -framework OpenGL
+	g++ -Wall -O2 -o main main.cpp `sdl-config --cflags --libs` -framework OpenGL

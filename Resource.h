@@ -1,6 +1,7 @@
 #ifndef __RESOURCE_H__
 #define __RESOURCE_H__
 
+#include <sstream>
 #include <string>
 #include <vector>
 #include <stack>
@@ -9,16 +10,14 @@
 #include "Color.h"
 #include "RandomGen.h"
 
-enum Resource { RES_NONE, RES_ENERGY, RES_POOP, RES_DESSERT };
+typedef int Resource;
+
+const Resource RES_NONE = 0;
 
 inline std::string show_resource(Resource r) {
-  switch(r) {
-    case RES_NONE: return "NONE";
-    case RES_ENERGY: return "ENERGY";
-    case RES_POOP: return "POOP";
-    case RES_DESSERT: return "DESSERT";
-    default: return "???";
-  }
+  std::stringstream ss;
+  ss << r;
+  return ss.str();
 }
 
 class ResourceField {
@@ -44,18 +43,18 @@ class ResourceField {
   {
     for (int i = 0; i < dim_x; i++) {
       for (int j = 0; j < dim_y; j++) {
-        grid[i][j].push(RES_ENERGY);
+        grid[i][j].push(2);
       }
     }
   }
 
   static Color resource_color(Resource res) {
-    switch (res) {
-      case RES_NONE: return Color(0,0,0);
-      case RES_ENERGY: return Color(0.2,0.2,0);
-      case RES_POOP: return Color(0.2,0.1,0);
-      case RES_DESSERT: return Color(0.2,0,0.2);
-      default: abort();
+    if (res == RES_NONE) {
+      return Color(0,0,0);
+    }
+    else {
+      double p = 1.0-2.0/(1+res);
+      return Color(p/2,res/20.0,(1-p)/2);
     }
   }
 
@@ -81,16 +80,20 @@ class ResourceField {
   }
 
   void step(double dt, RandomGen& gen) {
+    /*
     regen -= dt;
     while (regen < 0) {
       int i = std::min((int)gen.range(0, dim_x), dim_x);
       int j = std::min((int)gen.range(0, dim_y), dim_y);
-      grid[i][j].push(RES_ENERGY);
+      if (grid[i][j].size() > 1 && grid[i][j].top() > 1) {
+        grid[i][j].top()--;
+      }
 
       // poisson
       // XXX possible infinite loop if gen.range(0,1) can return exactly 1
       regen += -std::log(1 - gen.range(0,1)) * 0.2;
     }
+    */
   }
 
   Resource take(Vec2 position) {

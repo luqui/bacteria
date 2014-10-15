@@ -111,11 +111,18 @@ class Simulation {
 
     regen -= dt;
     while (regen < 0) {
-      Vec2 p = Vec2(gen.range(-32,-12), gen.range(-24,-4));
-      RandomGen g = gen.split();
-      add_organism(Organism(DNA::generate(gen), p, g, 2, gen.int_range(0, DNA_SIZE)));
+      Vec2 p = Vec2(gen.range(-32,31), gen.range(-24,23));
+      Resource r = resources.take(p);
+      if (r > 1) {
+        resources.put(p, r-1);
+        RandomGen g = gen.split();
+        add_organism(Organism(DNA::generate(gen), p, g, 2, gen.int_range(0, DNA_SIZE)));
+      }
+      else {
+        resources.put(p, r);
+      }
 
-      regen += -std::log(1 - gen.range(0,1)) / 20;
+      regen += -std::log(1 - gen.range(0,1)) / 5;
     }
   }
 
@@ -189,7 +196,7 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
   ResourceField& grid = sim->get_resources();
 
   while (true) {
-    energy -= 0.001;   // small cost to thinking
+    energy -= 0.002;   // small cost to thinking
 
     if (energy < 1) {
       drop_buffer(sim);
@@ -232,38 +239,19 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
         break;
       }
 
-      case INSTR_METABOLIZE_ENERGY: {
-        // dessert is toxic to energy metabolizers
-        if (find_resource(RES_DESSERT)) {
-          drop_buffer(sim);
-          grid.put(position, RES_DESSERT);
-          *death = true;
-          return;
-        }
-
-        if (find_resource(RES_ENERGY)) {
-          grid.put(position, RES_POOP);
-          energy += 20;
-        }
-        return;
-      }
-
-      case INSTR_METABOLIZE_POOP: {
-        if (find_resource(RES_POOP)) {
-          if (find_resource(RES_POOP)) {
-            energy += 20;
-            grid.put(position, RES_DESSERT);
-          }
-          else {
-            buffer.push_back(RES_POOP);
+      case INSTR_METABOLIZE: {
+        for (int r = 0; r < buffer.size(); r++) {
+          // excrete everything of higher depth
+          if (buffer[r] > i.metabolize.depth) {
+            grid.put(position, buffer[r]);
+            buffer.erase(buffer.begin()+r);
+            r--;
           }
         }
-        return;
-      }
 
-      case INSTR_METABOLIZE_DESSERT: {
-        if (find_resource(RES_DESSERT)) {
-          energy += 20;
+        if (find_resource(i.metabolize.depth)) {
+          grid.put(position, i.metabolize.depth+1);
+          energy += 10;
         }
         return;
       }
