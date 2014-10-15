@@ -13,7 +13,6 @@
 typedef int Resource;
 
 const Resource RES_NONE = 0;
-const Resource RES_MAX = 8;
 
 inline std::string show_resource(Resource r) {
   std::stringstream ss;
@@ -50,9 +49,19 @@ class ResourceField {
   }
 
   static Color resource_color(Resource res) {
-    int green = res % 3;
-    int rb = res / 3;
-    return Color(rb / 6.0, green / 6.0, rb / 6.0);
+    if (res == 0) { return Color(0,0,0); }
+
+    int blue = 0, green = 0, red = 0;
+    while (res % 2 == 0) { blue++; res /= 2; }
+    while (res % 3 == 0) { green++; res /= 3; }
+    while (res % 5 == 0) { red++; res /= 5; }
+    if (blue > 0 || green > 0 || red > 0) {
+        return Color(red / 6.0, green / 6.0, blue / 6.0);
+    }
+    else {
+        double mag = res / 20.0;
+        return Color(mag,mag,mag);
+    }
   }
 
   void draw() {

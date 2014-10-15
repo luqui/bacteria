@@ -11,6 +11,8 @@ enum InstructionType {
   INSTR_IDLE,
   INSTR_FORWARD,
   INSTR_ROTATE,
+  INSTR_CHECK,
+  INSTR_METAMORPH,
   INSTR_METABOLIZE,
   INSTR_DIVIDE,
   INSTR_CMP_ENERGY,
@@ -34,7 +36,16 @@ struct Instruction {
     } rotate;
 
     struct {
-      int depth;
+      int factor;
+      int jmp_divides;
+    } check;
+
+    struct {
+      int delta;
+    } metamorph;
+
+    struct {
+      int factor;
     } metabolize;
 
     struct {
@@ -60,8 +71,15 @@ struct Instruction {
       case INSTR_ROTATE:
         instr.rotate.speed = g.range(0,10);
         break;
+      case INSTR_CHECK:
+        instr.check.factor = g.int_range(2,11);
+        instr.check.jmp_divides = g.int_range(0, DNA_SIZE);
+        break;
+      case INSTR_METAMORPH:
+        instr.metamorph.delta = g.int_range(-4,4);
+        break;
       case INSTR_METABOLIZE:
-        instr.metabolize.depth = g.int_range(1,4);
+        instr.metabolize.factor = g.int_range(2,11);
         break;
       case INSTR_CMP_ENERGY:
         instr.cmp_energy.threshold = g.range(0,40);
@@ -89,8 +107,23 @@ struct Instruction {
       case INSTR_ROTATE:
         rotate.speed += g.range(-1,1);
         break;
+      case INSTR_CHECK:
+        check.factor += g.int_range(-3,4);
+        if (check.factor < 1) {
+          check.factor = 1;
+        }
+        if (g.range(0,1) < 0.1) {
+          check.jmp_divides = g.int_range(0, DNA_SIZE);
+        }
+        break;
+      case INSTR_METAMORPH:
+        metamorph.delta += g.int_range(-3,4);
+        break;
       case INSTR_METABOLIZE:
-        metabolize.depth += g.int_range(-1,2);
+        metabolize.factor += g.int_range(-3,4);
+        if (metabolize.factor < 2) {
+          metabolize.factor = 2;
+        }
         break;
       case INSTR_CMP_ENERGY:
         cmp_energy.threshold += g.range(-5,5);
@@ -102,7 +135,7 @@ struct Instruction {
         random_branch.probability += g.range(-0.3,0.3);
         random_branch.probability = clamp(0.0, 1.0, random_branch.probability);
         if (g.range(0,1) < 0.1) {
-          random_branch.branch = g.int_range(0, NUM_INSTRS);
+          random_branch.branch = g.int_range(0, DNA_SIZE);
         }
         break;
       default:
@@ -121,8 +154,14 @@ struct Instruction {
       case INSTR_ROTATE:
         out << "ROTATE(" << rotate.speed << ")";
         break;
+      case INSTR_CHECK:
+        out << "CHECK(" << check.factor << "| ? " << check.jmp_divides << ")";
+        break;
+      case INSTR_METAMORPH:
+        out << "METAMORPH(" << metamorph.delta << ")";
+        break;
       case INSTR_METABOLIZE:
-        out << "METABOLIZE(" << metabolize.depth << ")";
+        out << "METABOLIZE(" << metabolize.factor << ")";
         break;
       case INSTR_DIVIDE:
         out << "DIVIDE";
@@ -131,8 +170,8 @@ struct Instruction {
         out << "CMP_ENERGY(> " << cmp_energy.threshold << " ? " << cmp_energy.greater << ")";
         break;
       case INSTR_RANDOM_BRANCH:
-        out << "CMP_RANDOM_BRANCH(p=" << random_branch.probability << " ? "
-                                      << random_branch.branch << ")";
+        out << "RANDOM_BRANCH(p=" << random_branch.probability << " ? "
+                                  << random_branch.branch << ")";
         break;
       default:
         out << "???";

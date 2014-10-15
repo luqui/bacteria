@@ -99,13 +99,10 @@ class Simulation {
     while (regen < 0) {
       Vec2 p = Vec2(gen.range(-WIDTH/2,WIDTH/2-1), gen.range(-HEIGHT/2,HEIGHT/2-1));
       Resource r = resources.take(p);
-      if (r > 1) {
-        resources.put(p, r-1);
-      }
-      else if (r == 1) {
-        resources.put(p, r);
+      resources.put(p, r+1);
+      if (r == 1) {
         RandomGen g = gen.split();
-        add_organism(Organism(DNA::generate(gen), p, g, 2, gen.int_range(0, DNA_SIZE)));
+        add_organism(Organism(DNA::generate(gen), p, g, 10, 0));
       }
 
       regen += -std::log(1 - gen.range(0,1)) / (6.5e-3 * WIDTH * HEIGHT);
@@ -200,17 +197,40 @@ inline void Organism::step(double dt, Simulation* sim, bool* death) {
         break;
       }
 
+      case INSTR_CHECK: {
+        Resource r = grid.take(position);
+        if (r != RES_NONE) {
+            grid.put(position, r);
+            if (r % i.check.factor == 0) {
+                ip = i.check.jmp_divides;
+            }
+        }
+        break;
+      }
+
+      case INSTR_METAMORPH: {
+        /*
+        Resource r = grid.take(position);
+        if (r != RES_NONE) {
+          energy -= std::abs(i.metamorph.delta);  // infinite by sacrifice?
+          grid.put(position, r + i.metamorph.delta);
+        }
+        */
+        return;
+      }
+
       case INSTR_METABOLIZE: {
         Resource r = grid.take(position);
         if (r != RES_NONE) {
-            if (r == i.metabolize.depth && r < RES_MAX) {
-                grid.put(position, r+1);
-                energy += 20.0;
-            }
-            else {
-                grid.put(position, r);
-                energy -= 0.2;
-            }
+          if (r % i.metabolize.factor == 0) {
+            energy += 5 * i.metabolize.factor;
+            Resource p = r / i.metabolize.factor;
+            grid.put(position, p == 1 ? 1 : p+1);
+          }
+          else {
+            energy -= 0.2;
+            grid.put(position, r);
+          } 
         }
         return;
       }
